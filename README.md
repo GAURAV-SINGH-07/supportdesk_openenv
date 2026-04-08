@@ -1,307 +1,198 @@
 ---
+
 title: SupportDesk OpenEnv
 emoji: 🚀
 colorFrom: blue
 colorTo: green
 sdk: docker
 app_port: 7860
-pinned: false
+--------------
+
+# 🛠️ SupportDesk OpenEnv
+
+A **real-world customer support ticket triage environment** built for the **Meta PyTorch OpenEnv Hackathon**.
+
+This environment simulates realistic support workflows where an agent must:
+
+* classify tickets
+* prioritize them
+* escalate when needed
+* respond appropriately
+
 ---
 
-# SupportDesk OpenEnv
+## 🚀 Live Deployment
 
-A real-world OpenEnv environment for evaluating AI agents on customer support operations.
+🔗 Hugging Face Space:
+https://huggingface.co/spaces/Gaurav217/supportdesk-openenv
 
-## Why this environment?
+🌐 API Base URL:
+https://Gaurav217-supportdesk-openenv.hf.space
 
-Many agent benchmarks are toy environments. This one simulates a real support workflow that humans actually perform:
+---
 
-- classify incoming tickets
-- set priority correctly
-- escalate risky issues
-- draft professional customer replies
+## 🎯 Tasks
 
-This makes it useful for evaluating planning, tool use, multi-step progress, and safety-aware decision-making.
+The environment includes **3 progressively complex tasks**:
 
-## Requirements coverage
+### 1. Easy — Refund Handling
 
-This project is designed to satisfy the submission requirements you shared:
+* Single ticket
+* Billing classification
+* Medium priority
+* Refund-focused response
 
-- real-world task simulation
-- typed models for observation, action, and reward
-- `reset()`, `step()`, and `state()` implemented
-- `openenv.yaml` included
-- 3 tasks with deterministic graders
-- partial-progress reward shaping
-- root `inference.py` using the OpenAI client
-- Dockerfile for clean containerized execution
-- Hugging Face Space friendly FastAPI app
+### 2. Medium — Fraud + Billing
 
-## Environment summary
+* Multi-ticket handling
+* Security + billing mix
+* Escalation required
+* Multi-step reasoning
 
-**Name:** `supportdesk_openenv`  
-**Domain:** customer support / ticket triage  
-**Interface:** `reset()`, `step(action)`, `state()`  
-**Deployment target:** Hugging Face Space (Docker)
+### 3. Hard — Multi-Queue Workflow
 
-## Action space
+* Multiple tickets across domains:
 
-The environment accepts a typed `SupportDeskAction` object.
+  * Technical
+  * Compliance
+  * Shipping
+* Requires prioritization, escalation, and sequencing
 
-### Fields
+---
 
-- `action_type`: one of
-  - `classify`
-  - `prioritize`
-  - `reply`
-  - `escalate`
-  - `resolve`
-  - `noop`
-- `ticket_id`: target ticket like `T1`, `T2`, `T3`
-- `value`: used for classification, priority, escalation, or resolve reason
-- `message`: used for `reply`
+## ⚙️ API Endpoints
 
-### Valid values
+### `POST /reset`
 
-#### Categories
-- `billing`
-- `shipping`
-- `technical`
-- `security`
-- `compliance`
-- `general`
+Initialize a new task
 
-#### Priorities
-- `low`
-- `medium`
-- `high`
-- `urgent`
+```bash
+curl -X POST https://Gaurav217-supportdesk-openenv.hf.space/reset -H "Content-Type: application/json" -d "{}"
+```
 
-#### Escalation targets
-- `risk`
-- `engineering`
-- `privacy`
-- `billing_ops`
-- `shipping_ops`
+---
 
-## Observation space
+### `POST /step`
 
-The environment returns a typed `SupportDeskObservation` object containing:
+Take an action
 
-- `task_name`
-- `task_description`
-- `instructions`
-- `queue` of visible tickets
-- `completed_objectives`
-- `remaining_steps`
-- `last_action_result`
-- `last_action_error`
+```bash
+curl -X POST https://Gaurav217-supportdesk-openenv.hf.space/step \
+-H "Content-Type: application/json" \
+-d "{\"action_type\":\"classify\",\"ticket_id\":\"T1\",\"value\":\"billing\"}"
+```
 
-Each ticket includes:
+---
 
-- ticket id
-- customer tier
-- channel
-- subject
-- body
-- status
-- predicted category
-- predicted priority
-- escalation target
-- drafted reply
+### `GET /state`
 
-## Reward design
+Get current environment state
 
-Reward is shaped over the full trajectory.
+```bash
+curl https://Gaurav217-supportdesk-openenv.hf.space/state
+```
 
-### Positive signal
-The environment gives incremental reward when the agent newly completes one or more hidden objectives:
+---
 
-- correct classification
-- correct priority
-- correct escalation
-- useful reply containing key operational content
+### `GET /healthz`
 
-### Penalties
-Penalty points reduce final score for clearly undesirable behavior:
+Health check
 
-- invalid actions
-- repeated no-op behavior
-- resolving without replying
-- escalating urgent issues to the wrong team
+```bash
+curl https://Gaurav217-supportdesk-openenv.hf.space/healthz
+```
 
-### Score range
-- task score is always clamped to `[0.0, 1.0]`
-- step reward is always clamped to `[0.0, 1.0]`
+---
 
-## Tasks
+## 🧠 Environment Design
 
-### 1. `easy_refund`
-Difficulty: easy
+* Deterministic reward system
+* Objective-based scoring
+* Step-by-step state transitions
+* Realistic ticket simulation
 
-A customer was charged twice and wants a refund.
+Each task defines:
 
-Expected agent behavior:
-- classify as billing
-- set priority to medium
-- send a refund-oriented reply
+* objectives
+* expected actions
+* reward shaping
 
-### 2. `medium_fraud_and_billing`
-Difficulty: medium
+---
 
-The queue contains:
-- a suspected account takeover
-- an accidental annual billing upgrade
+## 🤖 Inference
 
-Expected agent behavior:
-- correctly triage both tickets
-- urgently escalate the security issue to risk
-- reply appropriately to both users
+Run the baseline agent:
 
-### 3. `hard_multi_queue`
-Difficulty: hard
+```bash
+python inference.py
+```
 
-The queue contains:
-- a VIP production outage
-- a privacy deletion request
-- a damaged shipment
+### Required environment variables:
 
-Expected agent behavior:
-- prioritize urgent business impact correctly
-- escalate outage to engineering
-- escalate privacy request to privacy
-- respond professionally across multiple issue types
+```bash
+API_BASE_URL=https://router.huggingface.co/v1
+MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
+HF_TOKEN=your_token_here
+```
 
-## Deterministic graders
+---
 
-The package exposes:
+## 🐳 Docker
 
-- `grade_easy(...)`
-- `grade_medium(...)`
-- `grade_hard(...)`
-- `grade_task_by_name(...)`
+Build and run locally:
 
-These graders return a normalized score in `[0.0, 1.0]` and objective completion details.
+```bash
+docker build -t supportdesk-openenv .
+docker run -p 7860:7860 supportdesk-openenv
+```
 
-## Project structure
+---
+
+## 📦 Project Structure
 
 ```text
 .
 ├── Dockerfile
 ├── README.md
-├── inference.py
 ├── openenv.yaml
+├── pyproject.toml
+├── uv.lock
 ├── requirements.txt
-├── server.py
-├── scripts
-│   └── validate-submission.sh
-└── supportdesk_env
-    ├── __init__.py
+├── inference.py
+├── server/
+│   ├── __init__.py
+│   └── app.py
+└── supportdesk_env/
     ├── env.py
+    ├── tasks.py
     ├── graders.py
     ├── models.py
-    └── tasks.py
 ```
 
-## Local setup
+---
 
-### 1. Install dependencies
+## ✅ Validation
 
-```bash
-pip install -r requirements.txt
-```
+* ✔ `openenv validate` passed
+* ✔ Local API tests passed
+* ✔ Docker build successful
+* ✔ Hugging Face deployment live
+* ✔ `/reset` endpoint verified
 
-### 2. Run the environment server
+---
 
-```bash
-uvicorn server:app --host 0.0.0.0 --port 7860
-```
+## 🏁 Submission
 
-### 3. Test reset endpoint
+* Hugging Face Space: https://huggingface.co/spaces/Gaurav217/supportdesk-openenv
 
-```bash
-curl -X POST http://localhost:7860/reset -H "Content-Type: application/json" -d '{}'
-```
+---
 
-### 4. Test state endpoint
+## 👤 Author
 
-```bash
-curl http://localhost:7860/state
-```
+**Gaurav Singh**
 
-## Docker usage
+---
 
-### Build
+## 📄 License
 
-```bash
-docker build -t supportdesk-openenv .
-```
-
-### Run
-
-```bash
-docker run -p 7860:7860 supportdesk-openenv
-```
-
-## Hugging Face Space deployment
-
-Create a **Docker Space**, upload this repository, and tag the Space with:
-
-- `openenv`
-
-The app listens on port `7860`, which works for HF Spaces.
-
-## Inference script
-
-The root-level file `inference.py` follows the required stdout format and runs all 3 tasks in sequence.
-
-### Required environment variables
-
-- `API_BASE_URL`
-- `MODEL_NAME`
-- `HF_TOKEN`
-
-### Optional environment variables
-
-- `SUPPORTDESK_BENCHMARK`
-
-### Example run
-
-```bash
-export HF_TOKEN=your_token_here
-export API_BASE_URL=https://router.huggingface.co/v1
-export MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
-
-python inference.py
-```
-
-## Example baseline behavior
-
-The inference script uses the OpenAI client for all model calls and includes a deterministic heuristic fallback if the returned payload is malformed. This makes the script more stable during validation while still satisfying the requirement to use the OpenAI client.
-
-You should record your actual baseline scores after running the script in your target setup and then update this README with measured numbers.
-
-## Validation checklist
-
-### Suggested checks
-
-```bash
-docker build -t supportdesk-openenv .
-python inference.py
-```
-
-If you have the OpenEnv CLI installed:
-
-```bash
-openenv validate
-```
-
-### Space ping validation
-
-```bash
-curl -X POST https://YOUR-SPACE.hf.space/reset -H "Content-Type: application/json" -d '{}'
-```
-
-## Notes
-
-Because OpenEnv validators can vary slightly by version, `openenv.yaml` may require a minor field-name adjustment depending on the exact validator release you use. The environment logic, typed models, HTTP endpoints, Docker setup, and baseline script are all included and ready to test.
+MIT License
