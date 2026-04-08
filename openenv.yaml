@@ -1,0 +1,29 @@
+name: supportdesk_openenv
+version: 1.1.0
+description: Real-world customer support ticket triage environment for agent evaluation.
+runtime: python
+entrypoint: server:app
+models:
+  action: supportdesk_env.models.SupportDeskAction
+  observation: supportdesk_env.models.SupportDeskObservation
+  reward: supportdesk_env.models.SupportDeskReward
+api:
+  reset: /reset
+  step: /step
+  state: /state
+tasks:
+  - name: easy_refund
+    difficulty: easy
+    description: Classify, prioritize, and reply to a duplicate-charge refund request.
+  - name: medium_fraud_and_billing
+    difficulty: medium
+    description: Handle a suspected account takeover plus a billing refund request.
+  - name: hard_multi_queue
+    difficulty: hard
+    description: Work a mixed queue with VIP outage, privacy deletion, and damaged shipment issues.
+metadata:
+  tags:
+    - openenv
+    - customer-support
+    - triage
+    - real-world
