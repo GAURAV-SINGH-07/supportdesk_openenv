@@ -7,11 +7,15 @@ from .tasks import TaskSpec, get_task_catalog
 
 
 TASK_CATALOG = get_task_catalog()
+EPS = 1e-3
+
+
+def clamp_open_unit_interval(x: float) -> float:
+    return min(1.0 - EPS, max(EPS, x))
 
 
 def _normalize_text(value: str | None) -> str:
     return (value or "").strip().lower()
-
 
 
 def _reply_keyword_hits(reply: str | None, keywords: List[str] | None) -> int:
@@ -19,7 +23,6 @@ def _reply_keyword_hits(reply: str | None, keywords: List[str] | None) -> int:
     if not reply_norm or not keywords:
         return 0
     return sum(1 for kw in keywords if kw.lower() in reply_norm)
-
 
 
 def evaluate_objectives(task: TaskSpec, tickets: List[TicketView]) -> Tuple[List[ObjectiveStatus], Dict[str, bool]]:
@@ -55,27 +58,26 @@ def evaluate_objectives(task: TaskSpec, tickets: List[TicketView]) -> Tuple[List
     return results, objective_map
 
 
-
 def compute_score(task: TaskSpec, tickets: List[TicketView], penalty_points: float) -> float:
     _, objective_map = evaluate_objectives(task, tickets)
     total = max(len(objective_map), 1)
     achieved = sum(1 for v in objective_map.values() if v)
     raw_score = achieved / total
-    return max(0.0, min(1.0, raw_score - penalty_points))
 
+    final_score = raw_score - penalty_points
+    return clamp_open_unit_interval(final_score)
 
 
 def grade_task(task: TaskSpec, tickets: List[TicketView], penalty_points: float) -> Dict[str, float | int | Dict[str, bool]]:
     objective_statuses, objective_map = evaluate_objectives(task, tickets)
     score = compute_score(task, tickets, penalty_points)
     return {
-        "score": round(score, 4),
+        "score": round(score, 6),
         "completed_objectives": sum(1 for v in objective_map.values() if v),
         "total_objectives": len(objective_map),
         "objective_map": objective_map,
         "completed": all(o.completed for o in objective_statuses),
     }
-
 
 
 def grade_task_by_name(task_name: str, tickets: List[TicketView], penalty_points: float = 0.0) -> Dict[str, float | int | Dict[str, bool]]:
@@ -84,15 +86,12 @@ def grade_task_by_name(task_name: str, tickets: List[TicketView], penalty_points
     return grade_task(TASK_CATALOG[task_name], tickets, penalty_points)
 
 
-
 def grade_easy(tickets: List[TicketView], penalty_points: float = 0.0) -> Dict[str, float | int | Dict[str, bool]]:
     return grade_task(TASK_CATALOG["easy_refund"], tickets, penalty_points)
 
 
-
 def grade_medium(tickets: List[TicketView], penalty_points: float = 0.0) -> Dict[str, float | int | Dict[str, bool]]:
     return grade_task(TASK_CATALOG["medium_fraud_and_billing"], tickets, penalty_points)
-
 
 
 def grade_hard(tickets: List[TicketView], penalty_points: float = 0.0) -> Dict[str, float | int | Dict[str, bool]]:
