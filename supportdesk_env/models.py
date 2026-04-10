@@ -54,7 +54,7 @@ class SupportDeskReward(BaseModel):
 
 
 class StepInfo(BaseModel):
-    score: float = Field(..., ge=0.0, le=1.0)
+    score: float = Field(..., gt=0.0, lt=1.0)
     penalty_points: float = Field(..., ge=0.0, le=1.0)
     steps_taken: int
     max_steps: int
@@ -72,7 +72,7 @@ class StepResult(BaseModel):
 
 class EnvironmentState(BaseModel):
     task_name: str
-    score: float = Field(..., ge=0.0, le=1.0)
+    score: float = Field(..., gt=0.0, lt=1.0)
     penalty_points: float = Field(..., ge=0.0, le=1.0)
     steps_taken: int
     max_steps: int
